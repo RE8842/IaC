@@ -1,8 +1,4 @@
-provider "aws" {
-  region = "us-east-1"
-  access_key = "AKIA2ECDELOUC66DHKKP"
-  secret_key = "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"
-}
+
 
 locals {
   common_tags = {
