@@ -1,4 +1,0 @@
-First - Update the repository - sudo dnf update
-Second - install apache - sudo -y install httpd
-Third - start apache Service - sudo systemctl start httpd
-Fourth - configure Apache to run on startup - sudo systemctl enable httpd
