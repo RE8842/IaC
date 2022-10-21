@@ -1,61 +1,47 @@
-
-
-locals {
-  common_tags = {
-    Owner = "STS Team"
-    service = "backend"
+terraform {
+  required_providers {
+    aws = {
+      source = "hashicorp/aws"
+      version = "4.36.0"
     }
   }
-
-/*  
-resource "aws_s3_bucket" "sts" {
-    bucket = "stsre-terraform-backend"
-    tags = local.common_tags
-}
-
-resource "aws_s3_object" "folder" {
-  bucket = aws_s3_bucket.sts.id
-  key    = "shared/"
-}
-*/
-
-terraform {
   backend "s3" {
-    bucket = "stsre-terraform-backend"
-    key    = "shared/terraform.tfstate"
+    bucket = "week3demo"
+    key = "terraform.tfstate"
     region = "us-east-1"
   }
 }
 
-resource "aws_vpc" "default" {
-  cidr_block           = "172.0.0.0/16"
-  enable_dns_hostnames = true
+provider "aws" {
+  profile = "respinoza"
+  region = "us-east-1"
 }
 
-resource "aws_eip" "lb" {
-  vpc      = true
+data "aws_key_pair" "demowk3" {
+  key_name="demowk3"
 }
 
-output "eip" {
-  value = aws_eip.lb.public_ip
-}
+resource "aws_instance" "stsvm" {
+   ami = "ami-09d3b3274b6c5d4aa"
+   instance_type = "t2.micro"
+   key_name = data.aws_key_pair.demowk3.key_name
+   vpc_security_group_ids = [aws_security_group.dynamicsg.id]
+   subnet_id = "subnet-0666dccf9543926de"
+   tags = {
+     "Name" = "EC2"
+   }
+   user_data = file("${path.module}/userdata.sh")
 
-resource "aws_internet_gateway" "gw" {
-  vpc_id = aws_vpc.default.id
-}
-
-variable "sg_ports" {
-  type        = list(number)
-  description = "list of ingress ports"
-  default     = [80, 22]
+   #tags = local.common_tags
 }
 
 resource "aws_security_group" "dynamicsg" {
   name        = "dynamic-sg"
   description = "Ingress for Vault"
+  vpc_id = "vpc-094539794c5fc6b0e"
 
   dynamic "ingress" {
-    for_each = var.sg_ports
+    for_each = var.ports
     iterator = port
     content {
       from_port   = port.value
@@ -64,16 +50,14 @@ resource "aws_security_group" "dynamicsg" {
       cidr_blocks = ["0.0.0.0/0"]
     }
   }
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+  }
 }
 
-resource "aws_key_pair" "loginkey" {
-  key_name   = "login-key"
-  public_key = file("${path.module}/id_rsa.pub")
-}
 
-resource "aws_instance" "stsvm" {
-   ami = "ami-08e167817c87ed7fd"
-   instance_type = "t2.micro"
-   key_name = aws_key_pair.loginkey.key_name
-   tags = local.common_tags
-}
+
